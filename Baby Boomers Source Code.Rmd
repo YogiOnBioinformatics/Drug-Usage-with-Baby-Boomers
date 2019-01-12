@@ -1,0 +1,128 @@
+---
+title: "Baby Boomers Love Their Drugs"
+author: "Yogindra Raghav"
+date: "December 10, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+I was interested in looking into Baby Boomers usage of drugs after a conversation with one of my friends. This came about during a Genomics class which dealt with Genomic Medicine and Pharmacogenomics. It's a long story how we got to that topic but either way I found a data set to use and even found an article that did some visualizations of said data. 
+
+Without further ado, I will be replicating the data graphic about Baby Boomers and drug use from [here](https://fivethirtyeight.com/features/how-baby-boomers-get-high/).
+
+**Note**: I will do technical discussion of the data wrangling-visualization procedure step-by-step as I replicate the graphic. After creation of the graph, I will explain the context of the data graphic.  
+
+**ANALYSIS**: 
+
+
+Use the `mdsr` and `fivethirtyeight` packages to do this analysis.  
+
+
+```{r, warning=FALSE,  message=FALSE}
+
+# load necessary packages 
+
+library(mdsr) 
+library(fivethirtyeight) # package that contains data 
+library(tibble)
+
+```
+
+
+To recreate the graph and look at drug use amongst Baby Boomers, we will look at the `drug_use` dataset. This dataset contains usage statistics of 13 drugs in the past 12 months over 17 age groups.
+
+```{r}
+
+# two ways of visualizing data set: 
+
+drug_use
+glimpse(drug_use)
+
+```
+
+Since we need to visualize the percentage of Americans between the ages of 50-64 that took drugs, we can filter the age column in the data set. The visualization of the new dataset is also shown. 
+
+```{r}
+
+baby_boomers = drug_use %>% filter(age == "50-64") # filter 
+
+glimpse(baby_boomers) # view data set
+
+```
+
+Now we will go ahead and select for columns in our dataset that are used in the graphic of the article. There are several. Most importantly each drug has two columns. One column is for whether a person has used that drug in the last 12 months. The other column explains the frequency at which they did so. Based on the graphic chosen, we need to visualize the number of people that have used the drug. For this reason, we shall select for columns that deal with drug use for those drugs used in the graphic from the article. 
+
+
+```{r}
+
+baby_boomers = baby_boomers %>% select(marijuana_use, pain_releiver_use, tranquilizer_use, 
+cocaine_use, crack_use, oxycontin_use, stimulant_use, hallucinogen_use, sedative_use, 
+inhalant_use, meth_use, heroin_use) # selecting columns
+
+glimpse(baby_boomers) # visualize
+
+```
+
+
+For the sake of plotting, we need to transpose the table (flip rows and columns). Once this is done we convert to a data frame so that we can add a column for the drug and change column names. We convert this data frame to a tibble and then use the row names (which are the drugs) for a new column. Create a variable with a list of the drugs in the correct order. Once that's done we make a new column with the correct drug names that are used in the final graphic. Rename the percentage frequency column to frequency. Select for the correct drug names and frequency column. 
+
+```{r}
+
+baby_boomers = t(baby_boomers) # transpose 
+
+baby_boomers = data.frame(baby_boomers) # make into data frame to keep the drug names 
+
+baby_boomers = rownames_to_column(as_tibble(baby_boomers)) 
+# convert baby_boomers to tibble and then make drugs into a column 
+
+drug_names = c("Marijuana", "Pain reliever", "Tranquilizer", "Cocaine", "Crack", 
+"OxyContin", "Stimulant", "Hallucinogen", "Sedative", "Inhalant", "Meth", 
+"Heroin") # drug names 
+
+baby_boomers$drugs = drug_names # make new column 
+
+baby_boomers = rename(baby_boomers, frequency = baby_boomers) # rename column 
+
+baby_boomers # show 
+
+baby_boomers = baby_boomers %>% select(drugs, frequency) # select 
+
+baby_boomers
+
+
+```
+
+
+
+For the sake of the bar graph going in descending order we must use the reorder function first. This will make the `baby_boomers$drugs` column in our `baby_boomers` data set into a factor. Once we have this, we can start plotting. First we give the data to be plotted to ggplot, then we let it know that we want to map drugs and their frequency. Next we tell it that we want to make a bar graph. In this case, you cannot use the default `geom_bar()` function since it uses `stat_count()` function which does not work with our data. You need to tell it that we want to use the exact numbers in our `baby_boomers$frequency` column to graph the data. For this reason, we use the `geom_bar(stat="identity")` option. For the sake of replicating the original graph, I made sure to tell it to fill the bars with the color red. After this we need to flip the coordinates since we want the drugs to be on the y-axis. The original data graphic in the chosen article is stripped of all titles, backgrounds, axis, etc. The only things that remain are the drug names, a title for the whole plot and the corresponding frequency numbers for each bar. For this reason I gave multiple options to the `theme()` function which hid all of those elements that were unnecessary. I then used the `geom_text()` function to add the frequency numbers correctly to the right of the corresponding bars. Finally I gave it a title using `ggtitle()`. The one important thing though is that I had to use the `\n` character (used commonly in computer science) to make a newline so that the title would be two lines, just like the original graph. 
+
+
+```{r}
+
+baby_boomers$drugs = reorder(baby_boomers$drugs, baby_boomers$frequency) # reorder 
+
+ggplot(data = baby_boomers, aes(x = drugs, y = frequency))+ 
+  geom_bar(stat= "identity", fill = "red")+
+  coord_flip()+ 
+  theme(axis.line= element_blank(), axis.text.x = element_blank(), 
+        axis.ticks = element_blank(), axis.title.x = element_blank(),
+        axis.title.y =element_blank(),panel.background=element_blank(),
+        panel.border=element_blank(),panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),plot.background=element_blank())+ 
+  geom_text(aes(label = frequency), vjust = .24, hjust = -.1)+ 
+  ggtitle("Percentage of Americans aged 50-64 who said in a 2012 survey that \nthey had 
+used the following drugs in the past year")
+
+
+```
+
+
+**CONTEXT**: 
+
+The original dataset that the article uses for its own visualization purposes comes from the National Survey on Drug Use and Health from the Substance Abuse and Mental Health Data Archive. The authors of the original visualization wanted to see what drugs the "Baby Boomers" are currently taking. This is an interesting question for society since the "Baby Boomer" generation always has the stigma/connotation of being notorious drug users. This was probably why this graphic was chosen. Alas, the whole point was to see what drugs that generation are currently using and what proportion of the generation does so. 
+
+
